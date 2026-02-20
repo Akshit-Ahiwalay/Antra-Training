@@ -1,0 +1,89 @@
+*{
+    box-sizing: border-box;
+}
+
+.timer-topright{
+    position: fixed;
+    text-align: center;
+    padding: 16px 12px;
+
+    top: 16px;
+    right:16px;
+    width: 170px;
+}
+
+.timer_title{
+    margin: 0;
+}
+
+html,
+body{
+    height: 100%;
+}
+
+body{
+    margin: 0;
+}
+
+.page {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 28px;
+    padding: 28px 16px;
+}
+
+.title {
+    width: min(920px, 100%);
+    padding: 24px;
+    text-align: center;
+}
+
+.main-title{
+    margin: 0 0 10px;
+    font-size: 42px;
+    font-weight: 800;
+}
+
+.subtitle{
+    margin: 0 0 12px;
+    font-size: 22px;
+    font-weight: 600;
+}
+
+.game-board{
+    width: min(920px, 100%);
+    padding: 22px;
+    display: flex;
+    justify-content: center;
+}
+
+.board{
+    width: 860px;
+    display: grid;
+    grid-template-columns: repeat(4, 200px);
+    grid-auto-rows: 200px;
+    gap: 16px;
+    justify-content: center;
+}
+
+.cell{
+    width: 200px;
+    height: 200px;
+    border: 2px solid brown;
+    border-radius: 50%;
+    display: grid;
+    place-items: center;
+    user-select: none;
+    position: relative;
+}
+
+.cell_img{
+    width: 200px;
+    height: 200px;
+    border-radius: 50%;
+    padding: 23px;
+    object-fit: contain;
+    pointer-events: none; 
+}
