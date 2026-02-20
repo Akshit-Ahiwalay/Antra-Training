@@ -6,7 +6,7 @@ class MoleModel {
   static Max_Moles = 3;
   static Game_Duration = 30;
 
-  constructor() { 
+  constructor() {
     this.reset();
   }
 
@@ -15,27 +15,35 @@ class MoleModel {
     this.timeLeft = MoleModel.Game_Duration;
     this.isRunning = false;
 
-    this.cells = Array.from({ length: MoleModel.Board_Size }, (_, i) => ({ //create a new shallow copied array instance
+    this.cells = Array.from({ length: MoleModel.Board_Size }, (_, i) => ({
+      //create a new shallow copied array instance
       id: i,
       hasMole: false,
+      moleExpiresAt: 0,
+      hasSnake: false,
     }));
 
     this.timerInterval = null;
     this.moleInterval = null;
+    this.snakeInterval = null;
   }
 
-  startGame() { // whenever we start a new game we reset everything
+  startGame() {
+    // whenever we start a new game we reset everything
     this.reset();
     this.isRunning = true;
   }
 
-  stopGame() { // Helper function to stop the game
+  stopGame() {
+    // Helper function to stop the game
     this.isRunning = false;
     clearInterval(this.timerInterval); // Important to clear our setInterval
     clearInterval(this.moleInterval);
+    clearInterval(this.snakeInterval);
 
     this.timerInterval = null;
     this.moleInterval = null;
+    this.snakeInterval = null;
   }
 
   getActiveMoleCount() {
@@ -43,16 +51,44 @@ class MoleModel {
   }
 
   spawnMole() {
-    if (this.getActiveMoleCount() >= MoleModel.Max_Moles) return; // if there are max moles return nothing
+    if (this.getActiveMoleCount() >= MoleModel.Max_Moles) return;
 
-    const emptyCells = this.cells.filter((cell) => !cell.hasMole); // if the cell has a mole return noththing or dont spawn
+    const emptyCells = this.cells.filter((cell) => !cell.hasMole);
     if (emptyCells.length === 0) return;
 
-    const randomIndex = Math.floor(Math.random() * emptyCells.length); // finally spawn in a random index
-    emptyCells[randomIndex].hasMole = true;
+    const randomIndex = Math.floor(Math.random() * emptyCells.length);
+    const chosen = emptyCells[randomIndex];
+
+    chosen.hasMole = true;
+    chosen.moleExpiresAt = Date.now() + 2000; // mole disappears in 2s
   }
 
-  removeMole(cellId) { // helper function to remove mole (on click in view)
+  cleanupExpiredMoles() {
+    const now = Date.now();
+
+    this.cells.forEach((cell) => {
+      if (cell.hasMole && now >= cell.moleExpiresAt) {
+        cell.hasMole = false;
+        cell.moleExpiresAt = 0;
+      }
+    });
+  }
+
+  spawnSnake() {
+    this.cells.forEach((cell) => {
+      cell.hasSnake = false;
+    });
+
+    const availableCells = this.cells.filter((cell) => !cell.hasMole);
+
+    if (availableCells.length === 0) return;
+
+    const randomIndex = Math.floor(Math.random() * availableCells.length);
+    availableCells[randomIndex].hasSnake = true;
+  }
+
+  removeMole(cellId) {
+    // helper function to remove mole (on click in view)
     const cell = this.cells[cellId];
     if (cell.hasMole) {
       cell.hasMole = false;
@@ -60,9 +96,13 @@ class MoleModel {
     }
   }
 
-  clearBoard() { // helper function to clear the board
-    this.cells.forEach((cell) => { //go through the whole array and set has mole to false
+  clearBoard() {
+    // helper function to clear the board
+    this.cells.forEach((cell) => {
+      //go through the whole array and set has mole to false
       cell.hasMole = false;
+      cell.hasSnake = false;
+      cell.moleExpiresAt = 0;
     });
   }
 }
@@ -79,7 +119,8 @@ class MoleView {
     this.renderBoard();
   }
 
-  renderBoard() { // initial rendering of the game board
+  renderBoard() {
+    // initial rendering of the game board
     this.board.innerHTML = "";
 
     for (let i = 0; i < MoleModel.Board_Size; i++) {
@@ -90,7 +131,8 @@ class MoleView {
     }
   }
 
-  render(model) { // then render the mole inside the board
+  render(model) {
+    // then render the mole inside the board
     this.scoreEl.textContent = model.score;
     this.timeEl.textContent = model.timeLeft;
 
@@ -99,7 +141,12 @@ class MoleView {
     cells.forEach((cell, index) => {
       cell.innerHTML = "";
 
-      if (model.cells[index].hasMole) {
+      if (model.cells[index].hasSnake) {
+        const img = document.createElement("img");
+        img.src = "./assets/snake-image.jfif";
+        img.classList.add("cell_img");
+        cell.appendChild(img);
+      } else if (model.cells[index].hasMole) {
         const img = document.createElement("img");
         img.src = "./assets/mole-image.jfif";
         img.classList.add("cell_img");
@@ -112,7 +159,8 @@ class MoleView {
 // ---------------- Controller ------------------------
 
 class MoleController {
-  constructor(model, view) { // we pass model and view inside the controller
+  constructor(model, view) {
+    // we pass model and view inside the controller
     this.model = model;
     this.view = view;
 
@@ -129,12 +177,32 @@ class MoleController {
       if (!cell || !this.model.isRunning) return;
 
       const cellId = Number(cell.dataset.id);
+      const clickedCell = this.model.cells[cellId];
+
+      // if snake clicked
+      if (clickedCell.hasSnake) {
+        this.model.cells.forEach((cell) => {
+          cell.hasSnake = true;
+        });
+
+        this.model.stopGame();
+        this.view.render(this.model);
+
+        return;
+      }
+
       this.model.removeMole(cellId);
       this.view.render(this.model);
     });
   }
 
-  startGame() { // reset and set isRunning to true
+  startGame() {
+    //stop the game first if it is running (fixed clicking start multiple times bug)
+    if (this.model.isRunning) {
+      this.model.stopGame();
+    }
+
+    // reset and set isRunning to true
     this.model.startGame();
     this.view.render(this.model);
 
@@ -142,7 +210,8 @@ class MoleController {
     this.model.timerInterval = setInterval(() => {
       this.model.timeLeft--;
 
-      if (this.model.timeLeft <= 0) { // when the time is over
+      if (this.model.timeLeft <= 0) {
+        // when the time is over
         this.model.timeLeft = 0;
         this.model.stopGame();
         this.model.clearBoard();
@@ -156,9 +225,17 @@ class MoleController {
 
     // To make the moles spawn
     this.model.moleInterval = setInterval(() => {
+      this.model.cleanupExpiredMoles();
       this.model.spawnMole();
       this.view.render(this.model);
-    }, 1000);
+    }, 1000); // spawn mole every 1 sec
+
+    this.model.snakeInterval = setInterval(() => {
+      if (!this.model.isRunning) return;
+
+      this.model.spawnSnake();
+      this.view.render(this.model);
+    }, 2000); // snawn snake every 2 sec
   }
 }
 
